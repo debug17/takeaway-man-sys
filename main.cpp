@@ -10,11 +10,20 @@ typedef struct {
     char password[50];
 } User;
 
+// 菜品结构体
+typedef struct {
+    char name[50];
+    float price;
+    int isDeleted;//0-正常，1-已删除
+} Dish;
+
 // 店家结构体
 typedef struct {
     char shopname[50];
     char password[50];
     char address[100];
+    Dish dishes[100];
+    int dishCount;
 } Shop;
 
 // 管理员结构体
@@ -65,7 +74,9 @@ void roleMenu();
 void userAuthMenu();
 void shopAuthMenu();
 void riderAuthMenu();
-
+void addDish(Shop *shop);
+void deleteDish(Shop *shop);
+void displayDishes(Shop *shop);
 
 int main() {
     createDataDirectory();  // 确保目录存在
@@ -213,7 +224,7 @@ void shopRegister() {
     
     printf("请输入地址: ");
     scanf("%s", shops[shopCount].address);
-    
+    shops[shopCount].dishCount = 0;
     shopCount++;
     printf("注册成功!\n");
     saveShopsToTxt();
@@ -311,24 +322,83 @@ void userMenu(char* username) {
 
 // 店家菜单
 void shopMenu(char* shopname) {
+    Shop *currentShop = NULL;
+    for(int i = 0; i < shopCount; i++) {
+        if(strcmp(shops[i].shopname, shopname) == 0) {
+            currentShop = &shops[i];
+            break;
+        }
+    }
+    if(!currentShop) {
+        printf("商家信息错误！\n");
+        return;
+    }
+
     int choice;
     while(1) {
-        printf("\n====== 店家菜单 (%s) ======\n", shopname);
+        printf("\n====== 商家管理 [%s] ======\n", shopname);
         printf("1. 添加菜品\n");
-        printf("2. 查看订单\n");
-        printf("3. 修改信息\n");
+        printf("2. 删除菜品\n");
+        printf("3. 查看菜品\n");
         printf("0. 退出登录\n");
         printf("请选择: ");
         scanf("%d", &choice);
         
         switch(choice) {
-            case 1: printf("添加菜品功能待实现\n"); break;
-            case 2: printf("查看订单功能待实现\n"); break;
-            case 3: printf("修改信息功能待实现\n"); break;
+            case 1: addDish(currentShop); break;
+            case 2: deleteDish(currentShop); break;
+            case 3: displayDishes(currentShop); break;
             case 0: return;
-            default: printf("无效选择!\n");
+            default: printf("无效选择！\n");
         }
     }
+}
+
+
+//菜品显示
+void displayDishes(Shop *shop) {
+    printf("\n====== 当前菜品列表 ======\n");
+    int count = 0;
+    for(int i = 0; i < shop->dishCount; i++) {
+        if(!shop->dishes[i].isDeleted) {
+            printf("%d. %-20s %.2f元\n", 
+                  i+1, 
+                  shop->dishes[i].name, 
+                  shop->dishes[i].price);
+            count++;
+        }
+    }
+    if(count == 0) printf("暂无有效菜品\n");
+}
+
+//菜品删除
+void deleteDish(Shop *shop) {
+    if(shop->dishCount == 0) {
+        printf("当前没有菜品可删除！\n");
+        return;
+    }
+
+    displayDishes(shop);
+    
+    int choice;
+    printf("\n请输入要删除的菜品编号(0取消): ");
+    scanf("%d", &choice);
+    
+    if(choice == 0) return;
+    if(choice < 1 || choice > shop->dishCount) {
+        printf("无效选择！\n");
+        return;
+    }
+
+    int index = choice - 1;
+    if(shop->dishes[index].isDeleted) {
+        printf("该菜品已被删除！\n");
+        return;
+    }
+
+    shop->dishes[index].isDeleted = 1;
+    printf("菜品【%s】已删除！\n", shop->dishes[index].name);
+    saveShopsToTxt();
 }
 
 // 管理员菜单
@@ -390,13 +460,33 @@ void saveUsersToTxt() {
 void saveShopsToTxt() {
     FILE *fp = fopen("./data/shops.txt", "w");
     if(fp) {
-        fprintf(fp, "店名,密码,地址\n");
+        fprintf(fp, "店名,密码,地址,菜品数\n");
         for(int i = 0; i < shopCount; i++) {
-            fprintf(fp, "%s,%s,%s\n", shops[i].shopname, shops[i].password, shops[i].address);
+            fprintf(fp, "%s,%s,%s,%d\n",
+                   shops[i].shopname,
+                   shops[i].password,
+                   shops[i].address,
+                   shops[i].dishCount);
+            
+            // 保存菜品到单独文件
+            char dishFile[100];
+            sprintf(dishFile, "./data/dishes.txt", shops[i].shopname);
+            FILE *dishFp = fopen(dishFile, "w");
+            if(dishFp) {
+                fprintf(dishFp, "菜品名,价格,删除标记\n");
+                for(int j = 0; j < shops[i].dishCount; j++) {
+                    fprintf(dishFp, "%s,%.2f,%d\n",
+                           shops[i].dishes[j].name,
+                           shops[i].dishes[j].price,
+                           shops[i].dishes[j].isDeleted);
+                }
+                fclose(dishFp);
+            }
         }
         fclose(fp);
     }
 }
+
 
 // 从TXT加载用户数据
 void loadUsersFromTxt() {
@@ -423,21 +513,48 @@ void loadShopsFromTxt() {
     if(fp) {
         char line[256];
         fgets(line, sizeof(line), fp); // 跳过表头
+        
         while(fgets(line, sizeof(line), fp)) {
             char *token = strtok(line, ",");
             strcpy(shops[shopCount].shopname, token);
+            
             token = strtok(NULL, ",");
-            if(token) strcpy(shops[shopCount].password, token);
+            strcpy(shops[shopCount].password, token);
+            
+            token = strtok(NULL, ",");
+            strcpy(shops[shopCount].address, token);
+            
             token = strtok(NULL, ",\n");
-            if(token) {
-                strcpy(shops[shopCount].address, token);
-                shopCount++;
+            shops[shopCount].dishCount = atoi(token);
+            
+            // 加载菜品数据
+            char dishFile[100];
+            sprintf(dishFile, "./data/dishes.txt", shops[shopCount].shopname);
+            FILE *dishFp = fopen(dishFile, "r");
+            if(dishFp) {
+                char dishLine[256];
+                fgets(dishLine, sizeof(dishLine), dishFp); // 跳过表头
+                
+                for(int j = 0; j < shops[shopCount].dishCount; j++) {
+                    if(fgets(dishLine, sizeof(dishLine), dishFp)) {
+                        char *dishToken = strtok(dishLine, ",");
+                        strcpy(shops[shopCount].dishes[j].name, dishToken);
+                        
+                        dishToken = strtok(NULL, ",");
+                        shops[shopCount].dishes[j].price = atof(dishToken);
+                        
+                        dishToken = strtok(NULL, ",\n");
+                        shops[shopCount].dishes[j].isDeleted = atoi(dishToken);
+                    }
+                }
+                fclose(dishFp);
             }
+            shopCount++;
         }
         fclose(fp);
     }
-
 }
+
 // 骑手注册
 void riderRegister() {
     if(riderCount >= 50) {
@@ -549,4 +666,25 @@ void loadRidersFromTxt() {
         }
         fclose(fp);
     }
+}
+
+// 添加菜品
+void addDish(Shop *shop) {
+    if(shop->dishCount >= 100) {
+        printf("菜品数量已达上限！\n");
+        return;
+    }
+    
+    printf("\n====== 添加新菜品 ======\n");
+    printf("请输入菜品名称: ");
+    scanf("%s", shop->dishes[shop->dishCount].name);
+    
+    printf("请输入菜品价格: ");
+    scanf("%f", &shop->dishes[shop->dishCount].price);
+    
+    shop->dishes[shop->dishCount].isDeleted = 0;
+    shop->dishCount++;
+    
+    printf("添加成功！\n");
+    saveShopsToTxt();
 }
