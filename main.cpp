@@ -33,7 +33,7 @@ typedef struct {
 // 全局变量
 User users[100];
 Shop shops[50];
-Admin admin = {"admin", "admin123"};
+Admin admin = {"admin", "admin123"};//管理员账号
 int userCount = 0;
 int shopCount = 0;
 const char* USER_FILE = "./data/users.txt";  // Windows路径
@@ -43,7 +43,6 @@ int riderCount = 0;
 const char* RIDER_FILE = "./data/riders.txt";
 
 // 函数声明
-void mainMenu();
 void userRegister();
 void shopRegister();
 void userLogin();
@@ -62,45 +61,106 @@ void riderLogin();
 void riderMenu(char* username);
 void saveRidersToTxt();
 void loadRidersFromTxt();
+void roleMenu();
+void userAuthMenu();
+void shopAuthMenu();
+void riderAuthMenu();
+
 
 int main() {
     createDataDirectory();  // 确保目录存在
     loadUsersFromTxt();     // 加载用户数据
     loadShopsFromTxt();     // 加载店家数据
     loadRidersFromTxt();  // 加载骑手数据
-    mainMenu();
+    roleMenu();
     return 0;
 }
 
-// 主菜单
-void mainMenu() {
+// 角色选择主菜单
+void roleMenu() {
     int choice;
     while(1) {
         printf("\n====== 郑州轻工业大学校园外卖系统 ======\n");
-        printf("1. 用户注册\n");
-        printf("2. 店家注册\n");
-        printf("3. 骑手注册\n");
-        printf("4. 用户登录\n");
-        printf("5. 店家登录\n");
-        printf("6. 骑手登录\n");
-        printf("7. 管理员登录\n");
+        printf("请选择您的身份:\n");
+        printf("1. 用户\n");
+        printf("2. 商家\n");
+        printf("3. 骑手\n");
+        printf("4. 管理员\n");
         printf("0. 退出系统\n");
         printf("请选择: ");
         scanf("%d", &choice);
         
         switch(choice) {
-            case 1: userRegister(); break;
-            case 2: shopRegister(); break;
-            case 3: riderRegister(); break;
-            case 4: userLogin(); break;
-            case 5: shopLogin(); break;
-            case 6: riderLogin(); break;
-            case 7: adminLogin(); break;
+            case 1: userAuthMenu(); break;
+            case 2: shopAuthMenu(); break;
+            case 3: riderAuthMenu(); break;
+            case 4: adminLogin(); break;
             case 0: exit(0);
-            default: printf("无效选择!\n");
+            default: printf("无效选择! 请重新输入\n");
         }
     }
 }
+
+// 用户认证菜单
+void userAuthMenu() {
+    int choice;
+    while(1) {
+        printf("\n====== 用户操作 ======\n");
+        printf("1. 用户登录\n");
+        printf("2. 用户注册\n");
+        printf("0. 返回上级\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1: userLogin(); break;
+            case 2: userRegister(); break;
+            case 0: return;
+            default: printf("无效选择! 请重新输入\n");
+        }
+    }
+}
+
+// 商家认证菜单
+void shopAuthMenu() {
+    int choice;
+    while(1) {
+        printf("\n====== 商家操作 ======\n");
+        printf("1. 商家登录\n");
+        printf("2. 商家注册\n");
+        printf("0. 返回上级\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1: shopLogin(); break;
+            case 2: shopRegister(); break;
+            case 0: return;
+            default: printf("无效选择! 请重新输入\n");
+        }
+    }
+}
+
+// 骑手认证菜单
+void riderAuthMenu() {
+    int choice;
+    while(1) {
+        printf("\n====== 骑手操作 ======\n");
+        printf("1. 骑手登录\n");
+        printf("2. 骑手注册\n");
+        printf("0. 返回上级\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1: riderLogin(); break;
+            case 2: riderRegister(); break;
+            case 0: return;
+            default: printf("无效选择! 请重新输入\n");
+        }
+    }
+}
+
 
 // 用户注册
 void userRegister() {
@@ -310,9 +370,9 @@ void createDataDirectory() {
     #ifdef _WIN32
         _mkdir("./data");
     #else
-        mkdir("./data", 0777);
+        mkdir("./data", 0777);//非windows系统
     #endif
-}
+}//确保程序在不同系统的稳定运行
 
 // 保存用户数据到TXT
 void saveUsersToTxt() {
