@@ -77,6 +77,8 @@ void riderAuthMenu();
 void addDish(Shop *shop);
 void deleteDish(Shop *shop);
 void displayDishes(Shop *shop);
+void viewShopsWithDishes();
+
 
 int main() {
     createDataDirectory();  // 确保目录存在
@@ -298,7 +300,7 @@ void userMenu(char* username) {
     int choice;
     while(1) {
         printf("\n====== 用户菜单 (%s) ======\n", username);
-        printf("1. 查看所有店家\n");
+        printf("1. 查看店家及菜品\n");  // 合并选项
         printf("2. 下单\n");
         printf("3. 查看订单\n");
         printf("0. 退出登录\n");
@@ -306,12 +308,7 @@ void userMenu(char* username) {
         scanf("%d", &choice);
         
         switch(choice) {
-            case 1: 
-                printf("\n所有店家:\n");
-                for(int i = 0; i < shopCount; i++) {
-                    printf("%d. %s - %s\n", i+1, shops[i].shopname, shops[i].address);
-                }
-                break;
+            case 1: viewShopsWithDishes(); break;  // 新函数
             case 2: printf("下单功能待实现\n"); break;
             case 3: printf("查看订单功能待实现\n"); break;
             case 0: return;
@@ -319,6 +316,42 @@ void userMenu(char* username) {
         }
     }
 }
+
+// 查看店家及菜品
+void viewShopsWithDishes() {
+    if(shopCount == 0) {
+        printf("\n当前没有入驻商家！\n");
+        return;
+    }
+
+    printf("\n====== 商家及菜品列表 ======\n");
+    for(int i = 0; i < shopCount; i++) {
+        // 显示商家信息
+        printf("\n%d. %s - %s\n", i+1, shops[i].shopname, shops[i].address);
+        
+        // 显示该商家菜品
+        if(shops[i].dishCount == 0) {
+            printf("   (暂无菜品)\n");
+            continue;
+        }
+
+        int validDish = 0;
+        for(int j = 0; j < shops[i].dishCount; j++) {
+            if(!shops[i].dishes[j].isDeleted) {
+                printf("   %d.%s %.2f元\n", 
+                      ++validDish,
+                      shops[i].dishes[j].name,
+                      shops[i].dishes[j].price);
+            }
+        }
+        if(validDish == 0) printf("   (暂无有效菜品)\n");
+    }
+    
+    // 添加操作提示
+    printf("\n提示：请记录您想下单的【商家编号】和【菜品编号】\n");
+    printf("      在后续下单功能中使用这些编号选择\n");
+}
+
 
 // 店家菜单
 void shopMenu(char* shopname) {
