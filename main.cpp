@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <direct.h>   
 #include <sys/stat.h>
+#include <time.h>
 
 // 用户结构体
 typedef struct {
@@ -32,6 +33,26 @@ typedef struct {
     char password[50];
 } Admin;
 
+// 订单项结构体
+typedef struct {
+    char dishName[50];
+    float price;
+    int quantity;
+} OrderItem;
+
+// 订单结构体
+typedef struct {
+    char orderId[20];
+    char username[50];
+    char shopname[50];
+    char rider[50];
+    OrderItem items[10];
+    int itemCount;
+    float totalPrice;
+    int status; // 0-待接单 1-已接单 2-配送中 3-已完成
+    time_t orderTime;
+} Order;
+
 // 骑手结构体
 typedef struct {
     char username[50];
@@ -50,6 +71,9 @@ const char* SHOP_FILE = "./data/shops.txt";  // Windows路径
 Rider riders[50];
 int riderCount = 0;
 const char* RIDER_FILE = "./data/riders.txt";
+Order orders[100];
+int orderCount = 0;
+const char* ORDER_FILE = "./data/orders.txt";
 
 // 函数声明
 void userRegister();
@@ -78,13 +102,27 @@ void addDish(Shop *shop);
 void deleteDish(Shop *shop);
 void displayDishes(Shop *shop);
 void viewShopsWithDishes();
+void placeOrder(char* username);
+void saveOrdersToTxt();
+void loadOrdersFromTxt();
+void viewUserOrders(char* username);
+void viewPendingOrders();
+void acceptOrder(char* ridername);
+void viewAcceptedOrders(char* ridername);
+void deliverOrder(char* ridername);
+void completeOrder(char* ridername);
 
 
 int main() {
-    createDataDirectory();  // 确保目录存在
-    loadUsersFromTxt();     // 加载用户数据
-    loadShopsFromTxt();     // 加载店家数据
-    loadRidersFromTxt();  // 加载骑手数据
+    createDataDirectory();// 确保目录存在
+    loadUsersFromTxt();// 加载用户数据
+    loadShopsFromTxt();// 加载店家数据
+    loadRidersFromTxt();// 加载骑手数据
+    loadOrdersFromTxt();// 加载订单数据
+    saveUsersToTxt();
+    saveShopsToTxt();
+    saveRidersToTxt();
+    saveOrdersToTxt();
     roleMenu();
     return 0;
 }
@@ -309,12 +347,261 @@ void userMenu(char* username) {
         
         switch(choice) {
             case 1: viewShopsWithDishes(); break;  // 新函数
-            case 2: printf("下单功能待实现\n"); break;
-            case 3: printf("查看订单功能待实现\n"); break;
+            case 2: placeOrder(username); break;
+            case 3: viewUserOrders(username); break;
             case 0: return;
             default: printf("无效选择!\n");
         }
     }
+}
+
+// 下单功能
+void placeOrder(char* username) {
+    if(shopCount == 0) {
+        printf("当前没有可下单的商家！\n");
+        return;
+    }
+    
+    // 显示商家列表
+    viewShopsWithDishes();
+    
+    int shopChoice;
+    printf("\n请选择商家编号(0取消): ");
+    scanf("%d", &shopChoice);
+    
+    if(shopChoice == 0) return;
+    if(shopChoice < 1 || shopChoice > shopCount) {
+        printf("无效的商家编号！\n");
+        return;
+    }
+    
+    Shop *selectedShop = &shops[shopChoice-1];
+    
+    // 检查商家是否有有效菜品
+    int validDishes = 0;
+    for(int i = 0; i < selectedShop->dishCount; i++) {
+        if(!selectedShop->dishes[i].isDeleted) {
+            validDishes++;
+        }
+    }
+    
+    if(validDishes == 0) {
+        printf("该商家没有有效菜品！\n");
+        return;
+    }
+    
+    // 创建新订单
+    Order newOrder;
+    strcpy(newOrder.username, username);
+    strcpy(newOrder.shopname, selectedShop->shopname);
+    newOrder.rider[0] = '\0'; // 初始无骑手
+    newOrder.itemCount = 0;
+    newOrder.totalPrice = 0;
+    newOrder.status = 0; // 待接单
+    newOrder.orderTime = time(NULL);
+    
+    // 生成订单ID
+    sprintf(newOrder.orderId, "ORD%04d", orderCount+1);
+    
+    int continueOrdering = 1;
+    while(continueOrdering && newOrder.itemCount < 10) {
+        // 显示菜品
+        printf("\n%s的菜单:\n", selectedShop->shopname);
+        int dishIndex = 1;
+        int validDishIndices[50] = {0};
+        
+        for(int i = 0; i < selectedShop->dishCount; i++) {
+            if(!selectedShop->dishes[i].isDeleted) {
+                printf("%d. %-20s %.2f元\n", 
+                      dishIndex,
+                      selectedShop->dishes[i].name,
+                      selectedShop->dishes[i].price);
+                validDishIndices[dishIndex-1] = i;
+                dishIndex++;
+            }
+        }
+        
+        int dishChoice;
+        printf("\n请选择菜品编号(0结束下单): ");
+        scanf("%d", &dishChoice);
+        
+        if(dishChoice == 0) {
+            continueOrdering = 0;
+        } else if(dishChoice < 1 || dishChoice >= dishIndex) {
+            printf("无效的菜品编号！\n");
+        } else {
+            int actualDishIndex = validDishIndices[dishChoice-1];
+            
+            int quantity;
+            printf("请输入%s的份数: ", selectedShop->dishes[actualDishIndex].name);
+            scanf("%d", &quantity);
+            
+            if(quantity <= 0) {
+                printf("份数必须大于0！\n");
+                continue;
+            }
+            
+            // 添加到订单
+            strcpy(newOrder.items[newOrder.itemCount].dishName, 
+                  selectedShop->dishes[actualDishIndex].name);
+            newOrder.items[newOrder.itemCount].price = 
+                selectedShop->dishes[actualDishIndex].price;
+            newOrder.items[newOrder.itemCount].quantity = quantity;
+            
+            newOrder.totalPrice += 
+                selectedShop->dishes[actualDishIndex].price * quantity;
+            newOrder.itemCount++;
+        }
+    }
+    
+    if(newOrder.itemCount > 0) {
+        orders[orderCount++] = newOrder;
+        saveOrdersToTxt();
+        printf("\n下单成功！\n");
+        printf("订单号: %s\n", newOrder.orderId);
+        printf("总金额: %.2f元\n", newOrder.totalPrice);
+    } else {
+        printf("订单已取消，没有添加任何菜品。\n");
+    }
+}
+
+// 查看用户订单
+void viewUserOrders(char* username) {
+    printf("\n====== 我的订单 ======\n");
+    
+    int found = 0;
+    for(int i = 0; i < orderCount; i++) {
+        if(strcmp(orders[i].username, username) == 0) {
+            found = 1;
+            
+            // 格式化时间
+            char timeStr[20];
+            strftime(timeStr, 20, "%Y-%m-%d %H:%M", 
+                    localtime(&orders[i].orderTime));
+            
+            printf("\n订单号: %s\n", orders[i].orderId);
+            printf("商家: %s\n", orders[i].shopname);
+            printf("下单时间: %s\n", timeStr);
+            printf("状态: ");
+            switch(orders[i].status) {
+                case 0: printf("待接单"); break;
+                case 1: printf("已接单"); break;
+                case 2: printf("配送中"); break;
+                case 3: printf("已完成"); break;
+            }
+            printf("\n骑手: %s\n", orders[i].rider[0] ? orders[i].rider : "暂无");
+            
+            printf("\n订单明细:\n");
+            for(int j = 0; j < orders[i].itemCount; j++) {
+                printf("%d. %s x%d %.2f元\n", 
+                      j+1,
+                      orders[i].items[j].dishName,
+                      orders[i].items[j].quantity,
+                      orders[i].items[j].price * orders[i].items[j].quantity);
+            }
+            printf("总计: %.2f元\n", orders[i].totalPrice);
+            printf("----------------------------\n");
+        }
+    }
+    
+    if(!found) {
+        printf("您还没有任何订单记录。\n");
+    }
+}
+
+// 保存订单到文件
+void saveOrdersToTxt() {
+    FILE *fp = fopen(ORDER_FILE, "w");
+    if(fp) {
+        fprintf(fp, "订单ID,用户名,商家,骑手,总价,状态,下单时间,订单项数\n");
+        for(int i = 0; i < orderCount; i++) {
+            fprintf(fp, "%s,%s,%s,%s,%.2f,%d,%ld,%d\n",
+                   orders[i].orderId,
+                   orders[i].username,
+                   orders[i].shopname,
+                   orders[i].rider,
+                   orders[i].totalPrice,
+                   orders[i].status,
+                   orders[i].orderTime,
+                   orders[i].itemCount);
+            
+            // 保存订单项到单独文件
+            char itemFile[100];
+            sprintf(itemFile, "./data/order_%s.txt", orders[i].orderId);
+            FILE *itemFp = fopen(itemFile, "w");
+            if(itemFp) {
+                fprintf(itemFp, "菜品名,价格,数量\n");
+                for(int j = 0; j < orders[i].itemCount; j++) {
+                    fprintf(itemFp, "%s,%.2f,%d\n",
+                           orders[i].items[j].dishName,
+                           orders[i].items[j].price,
+                           orders[i].items[j].quantity);
+                }
+                fclose(itemFp);
+            }
+        }
+        fclose(fp);
+    }
+}
+
+// 从文件加载订单
+void loadOrdersFromTxt() {
+    FILE *fp = fopen(ORDER_FILE, "r");
+    if(fp) {
+        char line[256];
+        fgets(line, sizeof(line), fp);
+        
+        while(fgets(line, sizeof(line), fp)) {
+            char *token = strtok(line, ",");
+            strcpy(orders[orderCount].orderId, token);
+            
+            token = strtok(NULL, ",");
+            strcpy(orders[orderCount].username, token);
+            
+            token = strtok(NULL, ",");
+            strcpy(orders[orderCount].shopname, token);
+            
+            token = strtok(NULL, ",");
+            strcpy(orders[orderCount].rider, token);
+            
+            token = strtok(NULL, ",");
+            orders[orderCount].totalPrice = atof(token);
+            
+            token = strtok(NULL, ",");
+            orders[orderCount].status = atoi(token);
+            
+            token = strtok(NULL, ",");
+            orders[orderCount].orderTime = atol(token);
+            
+            token = strtok(NULL, ",\n");
+            orders[orderCount].itemCount = atoi(token);
+            
+            // 加载订单项
+            char itemFile[100];
+            sprintf(itemFile, "./data/order_%s.txt", orders[orderCount].orderId);
+            FILE *itemFp = fopen(itemFile, "r");
+            if(itemFp) {
+                char itemLine[256];
+                fgets(itemLine, sizeof(itemLine), itemFp);
+                
+                for(int j = 0; j < orders[orderCount].itemCount; j++) {
+                    if(fgets(itemLine, sizeof(itemLine), itemFp)) {
+                        char *itemToken = strtok(itemLine, ",");
+                        strcpy(orders[orderCount].items[j].dishName, itemToken);
+                        
+                        itemToken = strtok(NULL, ",");
+                        orders[orderCount].items[j].price = atof(itemToken);
+                        
+                        itemToken = strtok(NULL, ",\n");
+                        orders[orderCount].items[j].quantity = atoi(itemToken);
+                    }
+                }
+                fclose(itemFp);
+            }
+            orderCount++;
+        }
+        fclose(fp);
+    } 
 }
 
 // 查看店家及菜品
@@ -347,9 +634,6 @@ void viewShopsWithDishes() {
         if(validDish == 0) printf("   (暂无有效菜品)\n");
     }
     
-    // 添加操作提示
-    printf("\n提示：请记录您想下单的【商家编号】和【菜品编号】\n");
-    printf("      在后续下单功能中使用这些编号选择\n");
 }
 
 
@@ -640,32 +924,261 @@ void riderLogin() {
 
 // 骑手菜单
 void riderMenu(char* username) {
+    int riderIndex = -1;
+    for(int i = 0; i < riderCount; i++) {
+        if(strcmp(riders[i].username, username) == 0) {
+            riderIndex = i;
+            break;
+        }
+    }
+    if(riderIndex == -1) {
+        printf("骑手信息错误！\n");
+        return;
+    }
+
     int choice;
     while(1) {
         printf("\n====== 骑手菜单 (%s) ======\n", username);
+        printf("当前状态: %s\n", riders[riderIndex].status ? "接单中" : "休息中");
         printf("1. 开始接单\n");
         printf("2. 结束接单\n");
         printf("3. 查看待接订单\n");
         printf("4. 接单\n");
         printf("5. 查看已接订单\n");
+        printf("6. 配送订单\n");
+        printf("7. 完成订单\n");
         printf("0. 退出登录\n");
         printf("请选择: ");
         scanf("%d", &choice);
         
         switch(choice) {
             case 1: 
-                // 设置状态为接单中
+                riders[riderIndex].status = 1;
+                printf("已设置为接单状态！\n");
+                saveRidersToTxt();
                 break;
             case 2: 
-                // 设置状态为休息
+                riders[riderIndex].status = 0;
+                printf("已设置为休息状态！\n");
+                saveRidersToTxt();
                 break;
-            case 3: printf("查看待接订单功能待实现\n"); break;
-            case 4: printf("接单功能待实现\n"); break;
-            case 5: printf("查看已接订单功能待实现\n"); break;
+            case 3: viewPendingOrders(); break;
+            case 4: acceptOrder(username); break;
+            case 5: viewAcceptedOrders(username); break;
+            case 6: deliverOrder(username); break;
+            case 7: completeOrder(username); break;
             case 0: return;
             default: printf("无效选择!\n");
         }
     }
+}
+
+// 查看待接订单
+void viewPendingOrders() {
+    printf("\n====== 待接订单 ======\n");
+    int found = 0;
+    
+    for(int i = 0; i < orderCount; i++) {
+        if(orders[i].status == 0 && strlen(orders[i].rider) == 0) { // 状态为待接单
+            found = 1;
+            
+            char timeStr[20];
+            strftime(timeStr, 20, "%Y-%m-%d %H:%M", 
+                    localtime(&orders[i].orderTime));
+            
+            printf("\n订单号: %s\n", orders[i].orderId);
+            printf("商家: %s\n", orders[i].shopname);
+            printf("用户: %s\n", orders[i].username);
+            printf("下单时间: %s\n", timeStr);
+            printf("总金额: %.2f元\n", orders[i].totalPrice);
+            
+            printf("\n订单明细:\n");
+            for(int j = 0; j < orders[i].itemCount; j++) {
+                printf("%d. %s x%d %.2f元\n", 
+                      j+1,
+                      orders[i].items[j].dishName,
+                      orders[i].items[j].quantity,
+                      orders[i].items[j].price * orders[i].items[j].quantity);
+            }
+            printf("----------------------------\n");
+        }
+    }
+    
+    if(!found) {
+        printf("当前没有待接订单。\n");
+    }
+}
+// 骑手接单
+void acceptOrder(char* ridername) {
+    if(orderCount == 0) {
+        printf("当前没有可接的订单！\n");
+        return;
+    }
+    
+    // 显示待接订单
+    printf("\n====== 待接订单 ======\n");
+    int pendingOrders[100] = {0};
+    int pendingCount = 0;
+    
+    for(int i = 0; i < orderCount; i++) {
+        if(orders[i].status == 0) { // 状态为待接单
+            printf("%d. 订单号: %s (%.2f元)\n", 
+                  pendingCount+1, 
+                  orders[i].orderId, 
+                  orders[i].totalPrice);
+            pendingOrders[pendingCount] = i;
+            pendingCount++;
+        }
+    }
+    
+    if(pendingCount == 0) {
+        printf("当前没有待接订单。\n");
+        return;
+    }
+    
+    int choice;
+    printf("\n请选择要接的订单编号(0取消): ");
+    scanf("%d", &choice);
+    
+    if(choice == 0) return;
+    if(choice < 1 || choice > pendingCount) {
+        printf("无效的订单编号！\n");
+        return;
+    }
+    
+    int orderIndex = pendingOrders[choice-1];
+    
+    // 检查骑手是否已接单
+    for(int i = 0; i < orderCount; i++) {
+        if(orders[i].status == 1 && strcmp(orders[i].rider, ridername) == 0) {
+            printf("您已有正在配送的订单，请先完成当前订单！\n");
+            return;
+        }
+    }
+    
+    // 接单
+    strcpy(orders[orderIndex].rider, ridername);
+    orders[orderIndex].status = 1; // 已接单
+    saveOrdersToTxt();
+    
+    printf("成功接单！订单号: %s\n", orders[orderIndex].orderId);
+}
+
+// 查看已接订单
+void viewAcceptedOrders(char* ridername) {
+    printf("\n====== 我的订单 ======\n");
+    int found = 0;
+    
+    for(int i = 0; i < orderCount; i++) {
+        if(strcmp(orders[i].rider, ridername) == 0 && 
+           (orders[i].status == 1 || orders[i].status == 2)) {
+            found = 1;
+            
+            // 格式化时间
+            char timeStr[20];
+            strftime(timeStr, 20, "%Y-%m-%d %H:%M", 
+                    localtime(&orders[i].orderTime));
+            
+            printf("\n订单号: %s\n", orders[i].orderId);
+            printf("商家: %s\n", orders[i].shopname);
+            printf("用户: %s\n", orders[i].username);
+            printf("下单时间: %s\n", timeStr);
+            printf("状态: %s\n", orders[i].status == 1 ? "已接单" : "配送中");
+            printf("总金额: %.2f元\n", orders[i].totalPrice);
+            
+            printf("\n订单明细:\n");
+            for(int j = 0; j < orders[i].itemCount; j++) {
+                printf("%d. %s x%d %.2f元\n", 
+                      j+1,
+                      orders[i].items[j].dishName,
+                      orders[i].items[j].quantity,
+                      orders[i].items[j].price * orders[i].items[j].quantity);
+            }
+            printf("----------------------------\n");
+        }
+    }
+    
+    if(!found) {
+        printf("您当前没有已接订单。\n");
+    }
+}
+
+// 配送订单
+void deliverOrder(char* ridername) {
+    printf("\n====== 配送订单 ======\n");
+    int deliveringOrders[100] = {0};
+    int deliveringCount = 0;
+    
+    for(int i = 0; i < orderCount; i++) {
+        if(strcmp(orders[i].rider, ridername) == 0 && orders[i].status == 1) {
+            printf("%d. 订单号: %s (%.2f元)\n", 
+                  deliveringCount+1, 
+                  orders[i].orderId, 
+                  orders[i].totalPrice);
+            deliveringOrders[deliveringCount] = i;
+            deliveringCount++;
+        }
+    }
+    
+    if(deliveringCount == 0) {
+        printf("您当前没有需要配送的订单。\n");
+        return;
+    }
+    
+    int choice;
+    printf("\n请选择要开始配送的订单编号(0取消): ");
+    scanf("%d", &choice);
+    
+    if(choice == 0) return;
+    if(choice < 1 || choice > deliveringCount) {
+        printf("无效的订单编号！\n");
+        return;
+    }
+    
+    int orderIndex = deliveringOrders[choice-1];
+    orders[orderIndex].status = 2; // 配送中
+    saveOrdersToTxt();
+    
+    printf("订单 %s 已开始配送！\n", orders[orderIndex].orderId);
+}
+
+// 完成订单
+void completeOrder(char* ridername) {
+    printf("\n====== 完成订单 ======\n");
+    int deliveringOrders[100] = {0};
+    int deliveringCount = 0;
+    
+    for(int i = 0; i < orderCount; i++) {
+        if(strcmp(orders[i].rider, ridername) == 0 && orders[i].status == 2) {
+            printf("%d. 订单号: %s (%.2f元)\n", 
+                  deliveringCount+1, 
+                  orders[i].orderId, 
+                  orders[i].totalPrice);
+            deliveringOrders[deliveringCount] = i;
+            deliveringCount++;
+        }
+    }
+    
+    if(deliveringCount == 0) {
+        printf("您当前没有正在配送的订单。\n");
+        return;
+    }
+    
+    int choice;
+    printf("\n请选择要完成的订单编号(0取消): ");
+    scanf("%d", &choice);
+    
+    if(choice == 0) return;
+    if(choice < 1 || choice > deliveringCount) {
+        printf("无效的订单编号！\n");
+        return;
+    }
+    
+    int orderIndex = deliveringOrders[choice-1];
+    orders[orderIndex].status = 3; // 已完成
+    saveOrdersToTxt();
+    
+    printf("订单 %s 已完成配送！\n", orders[orderIndex].orderId);
 }
 
 // 保存骑手数据到TXT
@@ -674,7 +1187,10 @@ void saveRidersToTxt() {
     if(fp) {
         fprintf(fp, "用户名,密码,状态\n");
         for(int i = 0; i < riderCount; i++) {
-            fprintf(fp, "%s,%s,%d\n", riders[i].username, riders[i].password, riders[i].status);
+            fprintf(fp, "%s,%s,%d\n", 
+                   riders[i].username, 
+                   riders[i].password,
+                   riders[i].status);
         }
         fclose(fp);
     }
@@ -689,13 +1205,14 @@ void loadRidersFromTxt() {
         while(fgets(line, sizeof(line), fp)) {
             char *token = strtok(line, ",");
             strcpy(riders[riderCount].username, token);
+            
             token = strtok(NULL, ",");
-            if(token) strcpy(riders[riderCount].password, token);
+            strcpy(riders[riderCount].password, token);
+            
             token = strtok(NULL, ",\n");
-            if(token) {
-                riders[riderCount].status = atoi(token);
-                riderCount++;
-            }
+            riders[riderCount].status = atoi(token);
+            
+            riderCount++;
         }
         fclose(fp);
     }
