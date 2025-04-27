@@ -621,7 +621,28 @@ void viewShopsWithDishes() {
             printf("   (暂无菜品)\n");
             continue;
         }
-
+        //解决验证缺失问题
+        char input[10];
+        while(1) {
+            printf("\n输入0返回上级菜单(下单也先输入0): ");
+            
+            // 获取整行输入
+            if(fgets(input, sizeof(input), stdin) == NULL) {
+                printf("输入错误！\n");
+                continue;
+            }
+            
+            // 转换为数字
+            int choice;
+            if(sscanf(input, "%d", &choice) != 1) {
+                printf("请输入数字！\n");
+                continue;
+            }
+            
+            if(choice == 0) return;
+            printf("无效选择！请输入0返回\n");
+        }
+        
         int validDish = 0;
         for(int j = 0; j < shops[i].dishCount; j++) {
             if(!shops[i].dishes[j].isDeleted) {
