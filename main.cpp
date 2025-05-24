@@ -111,6 +111,9 @@ void acceptOrder(char* ridername);
 void viewAcceptedOrders(char* ridername);
 void deliverOrder(char* ridername);
 void completeOrder(char* ridername);
+void userManagement();
+void shopManagement();
+void riderManagement();
 
 
 int main() {
@@ -131,13 +134,15 @@ int main() {
 void roleMenu() {
     int choice;
     while(1) {
-        printf("\n====== 郑州轻工业大学校园外卖系统 ======\n");
-        printf("请选择您的身份:\n");
-        printf("1. 用户\n");
-        printf("2. 商家\n");
-        printf("3. 骑手\n");
-        printf("4. 管理员\n");
-        printf("0. 退出系统\n");
+        printf("\t\t\t\t\t================================\n");
+        printf("\t\t\t\t\t     郑州轻工业大学外卖系统     \n");
+        printf("\t\t\t\t\t         请选择您的身份:         \n");
+        printf("\t\t\t\t\t          1.用户登陆          \n");
+        printf("\t\t\t\t\t          2.店家登陆            \n");
+        printf("\t\t\t\t\t          3.骑手登陆            \n");
+        printf("\t\t\t\t\t          4.管理员登陆          \n");
+        printf("\t\t\t\t\t          0.返回上一级          \n");
+        printf("\t\t\t\t\t================================\n");
         printf("请选择: ");
         scanf("%d", &choice);
         
@@ -621,28 +626,7 @@ void viewShopsWithDishes() {
             printf("   (暂无菜品)\n");
             continue;
         }
-        //解决验证缺失问题
-        char input[10];
-        while(1) {
-            printf("\n输入0返回上级菜单(下单也先输入0): ");
-            
-            // 获取整行输入
-            if(fgets(input, sizeof(input), stdin) == NULL) {
-                printf("输入错误！\n");
-                continue;
-            }
-            
-            // 转换为数字
-            int choice;
-            if(sscanf(input, "%d", &choice) != 1) {
-                printf("请输入数字！\n");
-                continue;
-            }
-            
-            if(choice == 0) return;
-            printf("无效选择！请输入0返回\n");
-        }
-        
+
         int validDish = 0;
         for(int j = 0; j < shops[i].dishCount; j++) {
             if(!shops[i].dishes[j].isDeleted) {
@@ -744,35 +728,139 @@ void adminMenu() {
     int choice;
     while(1) {
         printf("\n====== 管理员菜单 ======\n");
-        printf("1. 查看所有用户\n");
-        printf("2. 查看所有店家\n");
-        printf("3. 删除用户\n");
-        printf("4. 删除店家\n");
+        printf("1. 用户管理\n");
+        printf("2. 店家管理\n");
+        printf("3. 骑手管理\n");
         printf("0. 退出登录\n");
         printf("请选择: ");
         scanf("%d", &choice);
         
         switch(choice) {
-            case 1: 
-                printf("\n所有用户:\n");
-                for(int i = 0; i < userCount; i++) {
-                    printf("%d. %s\n", i+1, users[i].username);
-                }
-                break;
-            case 2: 
-                printf("\n所有店家:\n");
-                for(int i = 0; i < shopCount; i++) {
-                    printf("%d. %s - %s\n", i+1, shops[i].shopname, shops[i].address);
-                }
-                break;
-            case 3: printf("删除用户功能待实现\n"); break;
-            case 4: printf("删除店家功能待实现\n"); break;
+            case 1: userManagement(); break;
+            case 2: shopManagement(); break;
+            case 3: riderManagement(); break;
             case 0: return;
             default: printf("无效选择!\n");
         }
     }
 }
-// ====== 新增的文件操作函数 ======
+
+// 用户管理
+void userManagement() {
+    int choice;
+    while(1) {
+        printf("\n====== 用户管理 ======\n");
+        printf("1. 查看所有用户\n");
+        printf("2. 禁用/启用用户\n");
+        printf("0. 返回\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1:
+                printf("\n所有用户:\n");
+                for(int i = 0; i < userCount; i++) {
+                    printf("%d. %s\n", i+1, users[i].username);
+                }
+                break;
+            case 2:
+                if(userCount == 0) {
+                    printf("当前没有用户！\n");
+                    break;
+                }
+                printf("\n请输入要操作的用户编号: ");
+                int index;
+                scanf("%d", &index);
+                if(index < 1 || index > userCount) {
+                    printf("无效的用户编号！\n");
+                } else {
+                    // 这里简单实现状态切换，实际可以添加状态字段
+                    printf("已操作用户: %s\n", users[index-1].username);
+                }
+                break;
+            case 0: return;
+            default: printf("无效选择!\n");
+        }
+    }
+}
+
+// 店家管理 (类似用户管理)
+void shopManagement() {
+    int choice;
+    while(1) {
+        printf("\n====== 店家管理 ======\n");
+        printf("1. 查看所有店家\n");
+        printf("2. 禁用/启用店家\n");
+        printf("0. 返回\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1:
+                printf("\n所有店家:\n");
+                for(int i = 0; i < shopCount; i++) {
+                    printf("%d. %s - %s\n", i+1, shops[i].shopname, shops[i].address);
+                }
+                break;
+            case 2:
+                if(shopCount == 0) {
+                    printf("当前没有店家！\n");
+                    break;
+                }
+                printf("\n请输入要操作的店家编号: ");
+                int index;
+                scanf("%d", &index);
+                if(index < 1 || index > shopCount) {
+                    printf("无效的店家编号！\n");
+                } else {
+                    printf("已操作店家: %s\n", shops[index-1].shopname);
+                }
+                break;
+            case 0: return;
+            default: printf("无效选择!\n");
+        }
+    }
+}
+
+// 骑手管理 (类似用户管理)
+void riderManagement() {
+    int choice;
+    while(1) {
+        printf("\n====== 骑手管理 ======\n");
+        printf("1. 查看所有骑手\n");
+        printf("2. 禁用/启用骑手\n");
+        printf("0. 返回\n");
+        printf("请选择: ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1:
+                printf("\n所有骑手:\n");
+                for(int i = 0; i < riderCount; i++) {
+                    printf("%d. %s\n", i+1, riders[i].username);
+                }
+                break;
+            case 2:
+                if(riderCount == 0) {
+                    printf("当前没有骑手！\n");
+                    break;
+                }
+                printf("\n请输入要操作的骑手编号: ");
+                int index;
+                scanf("%d", &index);
+                if(index < 1 || index > riderCount) {
+                    printf("无效的骑手编号！\n");
+                } else {
+                    printf("已操作骑手: %s\n", riders[index-1].username);
+                }
+                break;
+            case 0: return;
+            default: printf("无效选择!\n");
+        }
+    }
+}
+
+//新增的文件操作函数
 // 创建数据目录
 void createDataDirectory() {
     #ifdef _WIN32
