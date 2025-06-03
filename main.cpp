@@ -161,13 +161,15 @@ void roleMenu() {
 void userAuthMenu() {
     int choice;
     while(1) {
-        printf("\n====== 用户操作 ======\n");
-        printf("1. 用户登录\n");
-        printf("2. 用户注册\n");
-        printf("0. 返回上级\n");
-        printf("请选择: ");
+        printf("\n╔════════════════════╗");
+        printf("\n║     用户操作       ║");
+        printf("\n╠════════════════════╣");
+        printf("\n║ 1. 用户登录        ║");
+        printf("\n║ 2. 用户注册        ║");
+        printf("\n║ 0. 返回上级        ║");
+        printf("\n╚════════════════════╝");
+        printf("\n 请选择: ");
         scanf("%d", &choice);
-        
         switch(choice) {
             case 1: userLogin(); break;
             case 2: userRegister(); break;
@@ -181,11 +183,14 @@ void userAuthMenu() {
 void shopAuthMenu() {
     int choice;
     while(1) {
-        printf("\n====== 商家操作 ======\n");
-        printf("1. 商家登录\n");
-        printf("2. 商家注册\n");
-        printf("0. 返回上级\n");
-        printf("请选择: ");
+        printf("\n╔════════════════════╗");
+        printf("\n║     商家操作       ║");
+        printf("\n╠════════════════════╣");
+        printf("\n║ 1. 商家登录        ║");
+        printf("\n║ 2. 商家入驻        ║");
+        printf("\n║ 0. 返回上级        ║");
+        printf("\n╚════════════════════╝");
+        printf("\n 请选择: ");
         scanf("%d", &choice);
         
         switch(choice) {
@@ -201,11 +206,15 @@ void shopAuthMenu() {
 void riderAuthMenu() {
     int choice;
     while(1) {
-        printf("\n====== 骑手操作 ======\n");
-        printf("1. 骑手登录\n");
-        printf("2. 骑手注册\n");
-        printf("0. 返回上级\n");
-        printf("请选择: ");
+        printf("\n╔════════════════════════╗");
+        printf("\n║       骑手中心         ║");
+        printf("\n╠════════════════════════╣");
+        printf("\n║  1. 骑手账号登录        ║");
+        printf("\n║  2. 骑手加盟申请       ║");
+        printf("\n║  0. 返回主界面         ║");
+        printf("\n╚════════════════════════╝");
+        printf("\n 请选择");
+
         scanf("%d", &choice);
         
         switch(choice) {
@@ -472,7 +481,9 @@ void placeOrder(char* username) {
 
 // 查看用户订单
 void viewUserOrders(char* username) {
-    printf("\n====== 我的订单 ======\n");
+    printf("\n╔══════════════════════════════════════╗");
+    printf("\n                我的订单                ");
+    printf("\n╚══════════════════════════════════════╝");
     
     int found = 0;
     for(int i = 0; i < orderCount; i++) {
@@ -658,12 +669,15 @@ void shopMenu(char* shopname) {
 
     int choice;
     while(1) {
-        printf("\n====== 商家管理 [%s] ======\n", shopname);
-        printf("1. 添加菜品\n");
-        printf("2. 删除菜品\n");
-        printf("3. 查看菜品\n");
-        printf("0. 退出登录\n");
-        printf("请选择: ");
+        printf("\n╔══════════════════════════════╗");
+        printf("\n║      商家管理 [%s]       ║", shopname);
+        printf("\n╠══════════════════════════════╣");
+        printf("\n║  1. 添加菜品                ║");
+        printf("\n║  2. 删除菜品                ║");
+        printf("\n║  3. 查看菜品                ║");
+        printf("\n║  0. 退出登录                ║");
+        printf("\n╚══════════════════════════════╝");
+        printf("\n 请选择操作 [0-3]: ");
         scanf("%d", &choice);
         
         switch(choice) {
