@@ -9,6 +9,7 @@
 typedef struct {
     char username[50];
     char password[50];
+    int isBanned;
 } User;
 
 // 菜品结构体
@@ -25,6 +26,7 @@ typedef struct {
     char address[100];
     Dish dishes[100];
     int dishCount;
+    int isBanned;
 } Shop;
 
 // 管理员结构体
@@ -58,6 +60,7 @@ typedef struct {
     char username[50];
     char password[50];
     int status; // 0-休息 1-接单中
+    int isBanned;
 } Rider;
 
 // 全局变量
@@ -134,6 +137,7 @@ int main() {
 void roleMenu() {
     int choice;
     while(1) {
+        system("cls");
         printf("\t\t\t\t\t================================\n");
         printf("\t\t\t\t\t     郑州轻工业大学外卖系统     \n");
         printf("\t\t\t\t\t         请选择您的身份:         \n");
@@ -161,6 +165,7 @@ void roleMenu() {
 void userAuthMenu() {
     int choice;
     while(1) {
+        system("cls");
         printf("\n╔════════════════════╗");
         printf("\n║     用户操作       ║");
         printf("\n╠════════════════════╣");
@@ -183,6 +188,7 @@ void userAuthMenu() {
 void shopAuthMenu() {
     int choice;
     while(1) {
+        system("cls");
         printf("\n╔════════════════════╗");
         printf("\n║     商家操作       ║");
         printf("\n╠════════════════════╣");
@@ -206,6 +212,7 @@ void shopAuthMenu() {
 void riderAuthMenu() {
     int choice;
     while(1) {
+        system("cls");
         printf("\n╔════════════════════════╗");
         printf("\n║       骑手中心         ║");
         printf("\n╠════════════════════════╣");
@@ -279,6 +286,7 @@ void shopRegister() {
     printf("请输入地址: ");
     scanf("%s", shops[shopCount].address);
     shops[shopCount].dishCount = 0;
+    shops[shopCount].isBanned = 0;
     shopCount++;
     printf("注册成功!\n");
     saveShopsToTxt();
@@ -295,8 +303,11 @@ void userLogin() {
     scanf("%s", password);
     
     for(int i = 0; i < userCount; i++) {
-        if(strcmp(users[i].username, username) == 0 && 
-           strcmp(users[i].password, password) == 0) {
+        if(strcmp(users[i].username, username) == 0 && strcmp(users[i].password, password) == 0) {
+            if(users[i].isBanned){
+                printf("该用户已被禁用, 请联系管理员！\n");
+                return;
+            }
             printf("登录成功!\n");
             userMenu(username);
             return;
@@ -319,6 +330,10 @@ void shopLogin() {
     for(int i = 0; i < shopCount; i++) {
         if(strcmp(shops[i].shopname, shopname) == 0 && 
            strcmp(shops[i].password, password) == 0) {
+            if(shops[i].isBanned){
+                printf("该店家已被禁用, 请联系管理员！\n");
+                return;
+            }
             printf("登录成功!\n");
             shopMenu(shopname);
             return;
@@ -351,6 +366,7 @@ void adminLogin() {
 void userMenu(char* username) {
     int choice;
     while(1) {
+        system("cls");
         printf("\n====== 用户菜单 (%s) ======\n", username);
         printf("1. 查看店家及菜品\n");  // 合并选项
         printf("2. 下单\n");
@@ -669,6 +685,7 @@ void shopMenu(char* shopname) {
 
     int choice;
     while(1) {
+        system("cls");
         printf("\n╔══════════════════════════════╗");
         printf("\n║      商家管理 [%s]       ║", shopname);
         printf("\n╠══════════════════════════════╣");
@@ -693,6 +710,7 @@ void shopMenu(char* shopname) {
 
 //菜品显示
 void displayDishes(Shop *shop) {
+    system("cls");
     printf("\n====== 当前菜品列表 ======\n");
     int count = 0;
     for(int i = 0; i < shop->dishCount; i++) {
@@ -741,6 +759,7 @@ void deleteDish(Shop *shop) {
 void adminMenu() {
     int choice;
     while(1) {
+        system("cls");
         printf("\n====== 管理员菜单 ======\n");
         printf("1. 用户管理\n");
         printf("2. 店家管理\n");
@@ -788,8 +807,9 @@ void userManagement() {
                 if(index < 1 || index > userCount) {
                     printf("无效的用户编号！\n");
                 } else {
-                    // 这里简单实现状态切换，实际可以添加状态字段
-                    printf("已操作用户: %s\n", users[index-1].username);
+                    users[index-1].isBanned = !users[index-1].isBanned;
+                    printf("已%s用户: %s\n", users[index-1].isBanned ? "禁用" : "启用",users[index-1].username);
+                    saveUsersToTxt(); 
                 }
                 break;
             case 0: return;
@@ -798,7 +818,7 @@ void userManagement() {
     }
 }
 
-// 店家管理 (类似用户管理)
+// 店家管理
 void shopManagement() {
     int choice;
     while(1) {
@@ -813,30 +833,55 @@ void shopManagement() {
             case 1:
                 printf("\n所有店家:\n");
                 for(int i = 0; i < shopCount; i++) {
-                    printf("%d. %s - %s\n", i+1, shops[i].shopname, shops[i].address);
+                    printf("%d. %c %s - %s\n", 
+                          i+1, 
+                          shops[i].isBanned ? 'B' : 'U',
+                          shops[i].shopname, 
+                          shops[i].address);
                 }
                 break;
+                
             case 2:
                 if(shopCount == 0) {
                     printf("当前没有店家！\n");
                     break;
                 }
+                
+                printf("\n当前店家列表:\n");
+                for(int i = 0; i < shopCount; i++) {
+                    printf("%d. %c %s - %s\n", 
+                          i+1, 
+                          shops[i].isBanned ? 'B' : 'U',
+                          shops[i].shopname, 
+                          shops[i].address);
+                }
+                
                 printf("\n请输入要操作的店家编号: ");
                 int index;
                 scanf("%d", &index);
+                
                 if(index < 1 || index > shopCount) {
                     printf("无效的店家编号！\n");
                 } else {
-                    printf("已操作店家: %s\n", shops[index-1].shopname);
+                    shops[index-1].isBanned = !shops[index-1].isBanned;
+                    printf("已%s店家: %s\n", 
+                          shops[index-1].isBanned ? "B" : "U",
+                          shops[index-1].shopname);
+                    saveShopsToTxt();
                 }
                 break;
-            case 0: return;
-            default: printf("无效选择!\n");
+                
+            case 0: 
+                return;
+                
+            default: 
+                printf("无效选择!\n");
         }
     }
 }
 
-// 骑手管理 (类似用户管理)
+
+// 骑手管理
 void riderManagement() {
     int choice;
     while(1) {
@@ -851,30 +896,59 @@ void riderManagement() {
             case 1:
                 printf("\n所有骑手:\n");
                 for(int i = 0; i < riderCount; i++) {
-                    printf("%d. %s\n", i+1, riders[i].username);
+                    printf("%d. %c %s - %s\n", 
+                          i+1, 
+                          riders[i].isBanned ? 'B' : 'U',
+                          riders[i].username,
+                          riders[i].status ? "接单中" : "休息中");
                 }
                 break;
+                
             case 2:
                 if(riderCount == 0) {
                     printf("当前没有骑手！\n");
                     break;
                 }
+                printf("\n当前骑手列表:\n");
+                for(int i = 0; i < riderCount; i++) {
+                    printf("%d. %c %s - %s\n", 
+                          i+1, 
+                          riders[i].isBanned ? 'B' : 'U',
+                          riders[i].username,
+                          riders[i].status ? "接单中" : "休息中");
+                }
+                
                 printf("\n请输入要操作的骑手编号: ");
                 int index;
                 scanf("%d", &index);
+                
                 if(index < 1 || index > riderCount) {
                     printf("无效的骑手编号！\n");
                 } else {
-                    printf("已操作骑手: %s\n", riders[index-1].username);
+                    riders[index-1].isBanned = !riders[index-1].isBanned;
+                    printf("已%s骑手: %s\n", 
+                          riders[index-1].isBanned ? "禁用" : "启用",
+                          riders[index-1].username);
+                    
+                    if(riders[index-1].isBanned && riders[index-1].status) {
+                        riders[index-1].status = 0;
+                        printf("该骑手正在接单，已自动设为休息状态！\n");
+                    }
+                    
+                    saveRidersToTxt();
                 }
                 break;
-            case 0: return;
-            default: printf("无效选择!\n");
+                
+            case 0: 
+                return;
+                
+            default: 
+                printf("无效选择!\n");
         }
     }
 }
 
-//新增的文件操作函数
+
 // 创建数据目录
 void createDataDirectory() {
     #ifdef _WIN32
@@ -888,9 +962,9 @@ void createDataDirectory() {
 void saveUsersToTxt() {
     FILE *fp = fopen("./data/users.txt", "w");
     if(fp) {
-        fprintf(fp, "用户名,密码\n");
+        fprintf(fp, "用户名,密码,状态\n");
         for(int i = 0; i < userCount; i++) {
-            fprintf(fp, "%s,%s\n", users[i].username, users[i].password);
+            fprintf(fp, "%s,%s,%d\n", users[i].username, users[i].password,users[i].isBanned);
         }
         fclose(fp);
     }
@@ -900,13 +974,14 @@ void saveUsersToTxt() {
 void saveShopsToTxt() {
     FILE *fp = fopen("./data/shops.txt", "w");
     if(fp) {
-        fprintf(fp, "店名,密码,地址,菜品数\n");
+        fprintf(fp, "店名,密码,地址,菜品数,状态\n");
         for(int i = 0; i < shopCount; i++) {
-            fprintf(fp, "%s,%s,%s,%d\n",
+            fprintf(fp, "%s,%s,%s,%d,%d\n",
                    shops[i].shopname,
                    shops[i].password,
                    shops[i].address,
-                   shops[i].dishCount);
+                   shops[i].dishCount,
+                   shops[i].isBanned);
             
             // 保存菜品到单独文件
             char dishFile[100];
@@ -929,6 +1004,7 @@ void saveShopsToTxt() {
 
 
 // 从TXT加载用户数据
+// 加载函数
 void loadUsersFromTxt() {
     FILE *fp = fopen("./data/users.txt", "r");
     if(fp) {
@@ -937,15 +1013,19 @@ void loadUsersFromTxt() {
         while(fgets(line, sizeof(line), fp)) {
             char *token = strtok(line, ",");
             strcpy(users[userCount].username, token);
+            
+            token = strtok(NULL, ",");
+            strcpy(users[userCount].password, token);
+            
             token = strtok(NULL, ",\n");
-            if(token) {
-                strcpy(users[userCount].password, token);
-                userCount++;
-            }
+            users[userCount].isBanned = token ? atoi(token) : 0;
+            
+            userCount++;
         }
         fclose(fp);
     }
 }
+
 
 // 从TXT加载店家数据
 void loadShopsFromTxt() {
@@ -964,8 +1044,11 @@ void loadShopsFromTxt() {
             token = strtok(NULL, ",");
             strcpy(shops[shopCount].address, token);
             
-            token = strtok(NULL, ",\n");
+            token = strtok(NULL, ",");
             shops[shopCount].dishCount = atoi(token);
+            
+            token = strtok(NULL, ",\n");
+            shops[shopCount].isBanned = token ? atoi(token) : 0;
             
             // 加载菜品数据
             char dishFile[100];
@@ -1017,7 +1100,8 @@ void riderRegister() {
     printf("请输入密码: ");
     scanf("%s", riders[riderCount].password);
     
-    riders[riderCount].status = 0; // 默认休息状态
+    riders[riderCount].status = 0;// 默认休息状态
+    riders[riderCount].isBanned = 0;
     riderCount++;
     printf("注册成功!\n");
     saveRidersToTxt();
@@ -1034,8 +1118,11 @@ void riderLogin() {
     scanf("%s", password);
     
     for(int i = 0; i < riderCount; i++) {
-        if(strcmp(riders[i].username, username) == 0 && 
-           strcmp(riders[i].password, password) == 0) {
+        if(strcmp(riders[i].username, username) == 0 && strcmp(riders[i].password, password) == 0) {
+            if(riders[i].isBanned) {
+                printf("该骑手账号已被禁用，请联系管理员！\n");
+                return;
+            }
             printf("登录成功!\n");
             riderMenu(username);
             return;
@@ -1044,6 +1131,7 @@ void riderLogin() {
     
     printf("用户名或密码错误!\n");
 }
+
 
 // 骑手菜单
 void riderMenu(char* username) {
@@ -1308,23 +1396,26 @@ void completeOrder(char* ridername) {
 void saveRidersToTxt() {
     FILE *fp = fopen(RIDER_FILE, "w");
     if(fp) {
-        fprintf(fp, "用户名,密码,状态\n");
+        fprintf(fp, "用户名,密码,状态,禁用状态\n");
         for(int i = 0; i < riderCount; i++) {
-            fprintf(fp, "%s,%s,%d\n", 
-                   riders[i].username, 
+            fprintf(fp, "%s,%s,%d,%d\n",
+                   riders[i].username,
                    riders[i].password,
-                   riders[i].status);
+                   riders[i].status,
+                   riders[i].isBanned);
         }
         fclose(fp);
     }
 }
+
 
 // 从TXT加载骑手数据
 void loadRidersFromTxt() {
     FILE *fp = fopen(RIDER_FILE, "r");
     if(fp) {
         char line[256];
-        fgets(line, sizeof(line), fp); // 跳过表头
+        fgets(line, sizeof(line), fp);
+        
         while(fgets(line, sizeof(line), fp)) {
             char *token = strtok(line, ",");
             strcpy(riders[riderCount].username, token);
@@ -1332,14 +1423,18 @@ void loadRidersFromTxt() {
             token = strtok(NULL, ",");
             strcpy(riders[riderCount].password, token);
             
-            token = strtok(NULL, ",\n");
+            token = strtok(NULL, ",");
             riders[riderCount].status = atoi(token);
+            
+            token = strtok(NULL, ",\n");
+            riders[riderCount].isBanned = token ? atoi(token) : 0;
             
             riderCount++;
         }
         fclose(fp);
     }
 }
+
 
 // 添加菜品
 void addDish(Shop *shop) {
