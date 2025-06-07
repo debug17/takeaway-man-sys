@@ -366,7 +366,6 @@ void adminLogin() {
 void userMenu(char* username) {
     int choice;
     while(1) {
-        system("cls");
         printf("\n====== 用户菜单 (%s) ======\n", username);
         printf("1. 查看店家及菜品\n");  // 合并选项
         printf("2. 下单\n");
@@ -685,7 +684,7 @@ void shopMenu(char* shopname) {
 
     int choice;
     while(1) {
-        system("cls");
+        //system("cls");
         printf("\n╔══════════════════════════════╗");
         printf("\n║      商家管理 [%s]       ║", shopname);
         printf("\n╠══════════════════════════════╣");
@@ -710,7 +709,6 @@ void shopMenu(char* shopname) {
 
 //菜品显示
 void displayDishes(Shop *shop) {
-    system("cls");
     printf("\n====== 当前菜品列表 ======\n");
     int count = 0;
     for(int i = 0; i < shop->dishCount; i++) {
